@@ -6,6 +6,7 @@ use cosmwasm_std::{
 };
 use cw1::CanExecuteResponse;
 use cw2::set_contract_version;
+use cw_storage_plus::Bound;
 use schemars::JsonSchema;
 use std::fmt;
 use vectis_wallet::{
@@ -40,6 +41,9 @@ const MAX_MULTISIG_VOTING_PERIOD: Duration = Duration::Time(2 << 27);
 // set resasonobly high value to not interfere with multisigs
 /// Used to spot an multisig instantiate reply
 const MULTISIG_INSTANTIATE_ID: u64 = u64::MAX;
+
+/// Max returned proof at once
+const MAX_LIMIT: u32 = 25;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -519,6 +523,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Info {} => to_binary(&query_info(deps)?),
         QueryMsg::CanExecuteRelay { sender } => to_binary(&query_can_execute_relay(deps, sender)?),
+        QueryMsg::Proof {
+            proof_req_source_id,
+        } => to_binary(&query_proof(deps, proof_req_source_id)?),
+        QueryMsg::Proofs { start_after, limit } => {
+            to_binary(&query_proofs(deps, start_after, limit)?)
+        }
     }
 }
 
@@ -553,6 +563,29 @@ pub fn query_can_execute_relay(deps: Deps, sender: String) -> StdResult<CanExecu
     Ok(CanExecuteResponse {
         can_execute: is_relayer(deps, &sender_canonical)?,
     })
+}
+
+pub fn query_proof(deps: Deps, proof_req_source_id: String) -> StdResult<Binary> {
+    DISCLOSED_PROOFS
+        .load(deps.storage, proof_req_source_id.as_bytes())
+        .map(Binary::from)
+}
+
+pub fn query_proofs(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Vec<Binary>> {
+    let limit = limit.unwrap_or(MAX_LIMIT);
+    let start: Option<Bound<&[u8]>> =
+        start_after.map(|s| Bound::ExclusiveRaw(s.as_bytes().to_vec()));
+
+    DISCLOSED_PROOFS
+        .prefix(())
+        .range(deps.storage, start, None, cosmwasm_std::Order::Ascending)
+        .take(limit as usize)
+        .map(|v| -> StdResult<Binary> { Ok(Binary::from(v?.1)) })
+        .collect()
 }
 
 #[cfg(feature = "migration")]

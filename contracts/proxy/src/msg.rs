@@ -74,4 +74,10 @@ pub enum QueryMsg {
     /// If CanExecuteRelay returns true then a call to `ExecuteRelay`,
     /// before any further state changes, should also succeed.
     CanExecuteRelay { sender: String },
+    /// Allow other contracts to query the disclosed proofs
+    Proof { proof_req_source_id: String },
+    Proofs {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
