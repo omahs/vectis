@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, CosmosMsg, Empty};
+use cosmwasm_std::{Addr, Binary, CosmosMsg, Empty};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -54,6 +54,15 @@ where
     },
     /// Updates label by the user
     UpdateLabel { new_label: String },
+    /// Add their verifiable credential disclosed proof
+    AddDisclosedProof {
+        // The proof request identifier
+        // https://github.com/hyperledger/indy-sdk/blob/master/vcx/libvcx/src/disclosed_proof.rs#L83
+        proof_req_source_id: String,
+        new_disclosed_proof: Binary,
+    },
+    /// Remove their verifiable credential disclosed proof
+    RemoveDisclosedProof { proof_req_source_id: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

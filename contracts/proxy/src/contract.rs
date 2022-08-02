@@ -21,8 +21,8 @@ use crate::helpers::{
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
-    User, ADDR_PREFIX, CODE_ID, FACTORY, FROZEN, GUARDIANS, LABEL, MULTISIG_ADDRESS,
-    MULTISIG_CODE_ID, RELAYERS, USER,
+    User, ADDR_PREFIX, CODE_ID, DISCLOSED_PROOFS, FACTORY, FROZEN, GUARDIANS, LABEL,
+    MULTISIG_ADDRESS, MULTISIG_CODE_ID, RELAYERS, USER,
 };
 use cw3_fixed_multisig::msg::InstantiateMsg as FixedMultisigInstantiateMsg;
 use cw_utils::{parse_reply_instantiate_data, Duration, Threshold};
@@ -143,6 +143,13 @@ pub fn execute(
             new_multisig_code_id,
         } => execute_update_guardians(deps, env, info, guardians, new_multisig_code_id),
         ExecuteMsg::UpdateLabel { new_label } => execute_update_label(deps, info, env, new_label),
+        ExecuteMsg::AddDisclosedProof {
+            proof_req_source_id,
+            new_disclosed_proof,
+        } => execute_add_disclosed_proof(deps, env, info, proof_req_source_id, new_disclosed_proof),
+        ExecuteMsg::RemoveDisclosedProof {
+            proof_req_source_id,
+        } => execute_remove_disclosed_proof(deps, env, info, proof_req_source_id),
     }
 }
 
@@ -431,6 +438,57 @@ pub fn execute_update_label(
     Ok(Response::default()
         .add_attribute("action", "update label")
         .add_attribute("label", new_label))
+}
+
+/// Storing disclosed proof from verifiable credential on chain
+pub fn execute_add_disclosed_proof(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    proof_req_source_id: String,
+    proof: Binary,
+) -> Result<Response, ContractError> {
+    let is_user = ensure_is_user(deps.as_ref(), info.sender.as_str());
+    let is_contract = ensure_is_contract_self(&env, &info.sender);
+    if is_user.is_err() && is_contract.is_err() {
+        is_user?;
+        is_contract?;
+    }
+
+    let proofs = DISCLOSED_PROOFS.may_load(deps.storage, proof_req_source_id.as_bytes())?;
+
+    if let Some(old_proof) = proofs {
+        if old_proof == proof.as_slice() {
+            return Err(ContractError::SameDisclosedProof {});
+        }
+    }
+
+    DISCLOSED_PROOFS.save(
+        deps.storage,
+        proof_req_source_id.as_bytes(),
+        &proof.as_slice().to_owned(),
+    )?;
+
+    Ok(Response::default()
+        .add_attribute("action", "added disclosed proof")
+        .add_attribute("new disclosed proof", proof.to_string()))
+}
+
+/// Removing stored disclosed proof from verifiable credential on chain
+pub fn execute_remove_disclosed_proof(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    proof_req_source_id: String,
+) -> Result<Response, ContractError> {
+    let is_user = ensure_is_user(deps.as_ref(), info.sender.as_str());
+    let is_contract = ensure_is_contract_self(&env, &info.sender);
+    if is_user.is_err() && is_contract.is_err() {
+        is_user?;
+        is_contract?;
+    }
+    DISCLOSED_PROOFS.remove(deps.storage, proof_req_source_id.as_bytes());
+    Ok(Response::default())
 }
 
 // Used to handle different multisig actions

@@ -59,3 +59,7 @@ pub const LABEL: Item<String> = Item::new("label");
 pub const MULTISIG_ADDRESS: Item<Option<CanonicalAddr>> = Item::new("fixed_multisig_address");
 /// Chain address prefix
 pub const ADDR_PREFIX: Item<String> = Item::new("addr_prefix");
+/// Disclosed proof derived from veriable credential
+/// The key is the proof request source id,
+/// we currently do not validate the disclosed proof format
+pub const DISCLOSED_PROOFS: Map<&[u8], Vec<u8>> = Map::new("disclosed_proofs");
