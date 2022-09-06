@@ -35,6 +35,19 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Allow other contracts to query the CredentialPublicKey",
+      "type": "object",
+      "required": [
+        "credential_info"
+      ],
+      "properties": {
+        "credential_info": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }

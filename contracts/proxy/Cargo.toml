@@ -36,6 +36,7 @@ thiserror = { version = "1.0.26" }
 sha2 = "0.9"
 hex = { version = "0.4", default-features = false }
 vectis-wallet = { path = "../../packages/vectis" }
+vectis-verifier = { path = "../../../anoncred-verifier/packages/vectis-verifier" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }

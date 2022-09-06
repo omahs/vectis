@@ -1,5 +1,6 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
+use vectis_verifier::types::TypeConversionError;
 use vectis_wallet::RelayTxError;
 
 #[derive(Error, Debug, PartialEq)]
@@ -43,6 +44,6 @@ pub enum ContractError {
     MultisigInstantiationError {},
     #[error("Same Label")]
     SameLabel {},
-    #[error("Same Disclosed Proof")]
-    SameDisclosedProof {},
+    #[error("Type Conversion For Cred PubKey")]
+    TypeConversionError(#[from] TypeConversionError),
 }

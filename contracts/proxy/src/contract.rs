@@ -1,14 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, SubMsg, WasmMsg,
+    to_binary, Addr, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Reply, Response, StdResult, SubMsg, WasmMsg,
 };
 use cw1::CanExecuteResponse;
 use cw2::set_contract_version;
-use cw_storage_plus::Bound;
 use schemars::JsonSchema;
+use std::convert::TryInto;
 use std::fmt;
+use vectis_verifier::types::{CredentialPublicKey, WCredentialPubKey};
 use vectis_wallet::{
     pub_key_to_address, query_verify_cosmos, CodeIdType, Guardians, RelayTransaction, RelayTxError,
     WalletFactoryExecuteMsg, WalletFactoryQueryMsg, WalletInfo,
@@ -22,8 +23,8 @@ use crate::helpers::{
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
-    User, ADDR_PREFIX, CODE_ID, DISCLOSED_PROOFS, FACTORY, FROZEN, GUARDIANS, LABEL,
-    MULTISIG_ADDRESS, MULTISIG_CODE_ID, RELAYERS, USER,
+    User, ADDR_PREFIX, CODE_ID, CRED_PUB_KEY, FACTORY, FROZEN, GUARDIANS, LABEL, MULTISIG_ADDRESS,
+    MULTISIG_CODE_ID, RELAYERS, USER,
 };
 use cw3_fixed_multisig::msg::InstantiateMsg as FixedMultisigInstantiateMsg;
 use cw_utils::{parse_reply_instantiate_data, Duration, Threshold};
@@ -41,9 +42,6 @@ const MAX_MULTISIG_VOTING_PERIOD: Duration = Duration::Time(2 << 27);
 // set resasonobly high value to not interfere with multisigs
 /// Used to spot an multisig instantiate reply
 const MULTISIG_INSTANTIATE_ID: u64 = u64::MAX;
-
-/// Max returned proof at once
-const MAX_LIMIT: u32 = 25;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -147,13 +145,10 @@ pub fn execute(
             new_multisig_code_id,
         } => execute_update_guardians(deps, env, info, guardians, new_multisig_code_id),
         ExecuteMsg::UpdateLabel { new_label } => execute_update_label(deps, info, env, new_label),
-        ExecuteMsg::AddDisclosedProof {
-            proof_req_source_id,
-            new_disclosed_proof,
-        } => execute_add_disclosed_proof(deps, env, info, proof_req_source_id, new_disclosed_proof),
-        ExecuteMsg::RemoveDisclosedProof {
-            proof_req_source_id,
-        } => execute_remove_disclosed_proof(deps, env, info, proof_req_source_id),
+        ExecuteMsg::AddCredentialPubKey { credential_pub_key } => {
+            execute_add_cred_pub_key(deps, env, info, credential_pub_key)
+        }
+        ExecuteMsg::RemoveCredentialPubKey {} => execute_remove_cred_pub_key(deps, env, info),
     }
 }
 
@@ -445,12 +440,11 @@ pub fn execute_update_label(
 }
 
 /// Storing disclosed proof from verifiable credential on chain
-pub fn execute_add_disclosed_proof(
+pub fn execute_add_cred_pub_key(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    proof_req_source_id: String,
-    proof: Binary,
+    credential_pub_key: WCredentialPubKey,
 ) -> Result<Response, ContractError> {
     let is_user = ensure_is_user(deps.as_ref(), info.sender.as_str());
     let is_contract = ensure_is_contract_self(&env, &info.sender);
@@ -459,31 +453,16 @@ pub fn execute_add_disclosed_proof(
         is_contract?;
     }
 
-    let proofs = DISCLOSED_PROOFS.may_load(deps.storage, proof_req_source_id.as_bytes())?;
+    CRED_PUB_KEY.save(deps.storage, &credential_pub_key.try_into()?)?;
 
-    if let Some(old_proof) = proofs {
-        if old_proof == proof.as_slice() {
-            return Err(ContractError::SameDisclosedProof {});
-        }
-    }
-
-    DISCLOSED_PROOFS.save(
-        deps.storage,
-        proof_req_source_id.as_bytes(),
-        &proof.as_slice().to_owned(),
-    )?;
-
-    Ok(Response::default()
-        .add_attribute("action", "added disclosed proof")
-        .add_attribute("new disclosed proof", proof.to_string()))
+    Ok(Response::default().add_attribute("action", "added credential public key"))
 }
 
 /// Removing stored disclosed proof from verifiable credential on chain
-pub fn execute_remove_disclosed_proof(
+pub fn execute_remove_cred_pub_key(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    proof_req_source_id: String,
 ) -> Result<Response, ContractError> {
     let is_user = ensure_is_user(deps.as_ref(), info.sender.as_str());
     let is_contract = ensure_is_contract_self(&env, &info.sender);
@@ -491,7 +470,7 @@ pub fn execute_remove_disclosed_proof(
         is_user?;
         is_contract?;
     }
-    DISCLOSED_PROOFS.remove(deps.storage, proof_req_source_id.as_bytes());
+    CRED_PUB_KEY.remove(deps.storage);
     Ok(Response::default())
 }
 
@@ -523,12 +502,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Info {} => to_binary(&query_info(deps)?),
         QueryMsg::CanExecuteRelay { sender } => to_binary(&query_can_execute_relay(deps, sender)?),
-        QueryMsg::Proof {
-            proof_req_source_id,
-        } => to_binary(&query_proof(deps, proof_req_source_id)?),
-        QueryMsg::Proofs { start_after, limit } => {
-            to_binary(&query_proofs(deps, start_after, limit)?)
-        }
+        QueryMsg::CredentialInfo {} => to_binary(&query_cred_info(deps)?),
     }
 }
 
@@ -565,27 +539,11 @@ pub fn query_can_execute_relay(deps: Deps, sender: String) -> StdResult<CanExecu
     })
 }
 
-pub fn query_proof(deps: Deps, proof_req_source_id: String) -> StdResult<Binary> {
-    DISCLOSED_PROOFS
-        .load(deps.storage, proof_req_source_id.as_bytes())
-        .map(Binary::from)
-}
-
-pub fn query_proofs(
-    deps: Deps,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<Vec<Binary>> {
-    let limit = limit.unwrap_or(MAX_LIMIT);
-    let start: Option<Bound<&[u8]>> =
-        start_after.map(|s| Bound::ExclusiveRaw(s.as_bytes().to_vec()));
-
-    DISCLOSED_PROOFS
-        .prefix(())
-        .range(deps.storage, start, None, cosmwasm_std::Order::Ascending)
-        .take(limit as usize)
-        .map(|v| -> StdResult<Binary> { Ok(Binary::from(v?.1)) })
-        .collect()
+pub fn query_cred_info(deps: Deps) -> StdResult<(CredentialPublicKey, CanonicalAddr)> {
+    Ok((
+        CRED_PUB_KEY.load(deps.storage)?,
+        USER.load(deps.storage)?.addr,
+    ))
 }
 
 #[cfg(feature = "migration")]

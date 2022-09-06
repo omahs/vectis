@@ -1,7 +1,8 @@
-use cosmwasm_std::{Addr, Binary, CosmosMsg, Empty};
+use cosmwasm_std::{Addr, CosmosMsg, Empty};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use vectis_verifier::types::WCredentialPubKey;
 use vectis_wallet::{CreateWalletMsg, Guardians, RelayTransaction};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -54,15 +55,12 @@ where
     },
     /// Updates label by the user
     UpdateLabel { new_label: String },
-    /// Add their verifiable credential disclosed proof
-    AddDisclosedProof {
-        // The proof request identifier
-        // https://github.com/hyperledger/indy-sdk/blob/master/vcx/libvcx/src/disclosed_proof.rs#L83
-        proof_req_source_id: String,
-        new_disclosed_proof: Binary,
+    /// Add self issued credential definition
+    AddCredentialPubKey {
+        credential_pub_key: WCredentialPubKey,
     },
-    /// Remove their verifiable credential disclosed proof
-    RemoveDisclosedProof { proof_req_source_id: String },
+    /// Remove self issued credential definition
+    RemoveCredentialPubKey {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -74,10 +72,6 @@ pub enum QueryMsg {
     /// If CanExecuteRelay returns true then a call to `ExecuteRelay`,
     /// before any further state changes, should also succeed.
     CanExecuteRelay { sender: String },
-    /// Allow other contracts to query the disclosed proofs
-    Proof { proof_req_source_id: String },
-    Proofs {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
+    /// Allow other contracts to query the CredentialPublicKey
+    CredentialInfo {},
 }
