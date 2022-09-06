@@ -13,26 +13,40 @@ import {
     Uint128,
     StakingMsg,
     DistributionMsg,
-    WasmMsg,
     Binary,
+    IbcMsg,
+    Timestamp,
+    Uint64,
+    WasmMsg,
+    GovMsg,
+    VoteOption,
     Coin,
     Empty,
+    IbcTimeout,
+    IbcTimeoutBlock,
     ExecuteMsgForEmpty,
     Addr,
+    BigNumberBytes,
+    WMap,
+    PointG1Bytes,
+    PointG2Bytes,
     RelayTransaction,
     Guardians,
     MultiSig,
+    WCredentialPubKey,
+    WCredentialPrimaryPubKey,
+    WCredentialRevocationPubKey,
     InfoResponse,
     ContractVersion,
     InstantiateMsg,
     CreateWalletMsg,
     QueryMsg,
-    Uint64,
 } from "./Proxy.types";
 export interface ProxyReadOnlyInterface {
     contractAddress: string;
     info: () => Promise<InfoResponse>;
     canExecuteRelay: ({ sender }: { sender: string }) => Promise<CanExecuteRelayResponse>;
+    credentialInfo: () => Promise<CredentialInfoResponse>;
 }
 export class ProxyQueryClient implements ProxyReadOnlyInterface {
     client: CosmWasmClient;
@@ -43,6 +57,7 @@ export class ProxyQueryClient implements ProxyReadOnlyInterface {
         this.contractAddress = contractAddress;
         this.info = this.info.bind(this);
         this.canExecuteRelay = this.canExecuteRelay.bind(this);
+        this.credentialInfo = this.credentialInfo.bind(this);
     }
 
     info = async (): Promise<InfoResponse> => {
@@ -55,6 +70,11 @@ export class ProxyQueryClient implements ProxyReadOnlyInterface {
             can_execute_relay: {
                 sender,
             },
+        });
+    };
+    credentialInfo = async (): Promise<CredentialInfoResponse> => {
+        return this.client.queryContractSmart(this.contractAddress, {
+            credential_info: {},
         });
     };
 }
@@ -134,11 +154,22 @@ export interface ProxyInterface extends ProxyReadOnlyInterface {
         memo?: string,
         funds?: Coin[]
     ) => Promise<ExecuteResult>;
+    addCredentialPubKey: (
+        {
+            credentialPubKey,
+        }: {
+            credentialPubKey: WCredentialPubKey;
+        },
+        fee?: number | StdFee | "auto",
+        memo?: string,
+        funds?: Coin[]
+    ) => Promise<ExecuteResult>;
+    removeCredentialPubKey: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
 export class ProxyClient extends ProxyQueryClient implements ProxyInterface {
-    override client: SigningCosmWasmClient;
+    client: SigningCosmWasmClient;
     sender: string;
-    override contractAddress: string;
+    contractAddress: string;
 
     constructor(client: SigningCosmWasmClient, sender: string, contractAddress: string) {
         super(client, contractAddress);
@@ -153,6 +184,8 @@ export class ProxyClient extends ProxyQueryClient implements ProxyInterface {
         this.removeRelayer = this.removeRelayer.bind(this);
         this.updateGuardians = this.updateGuardians.bind(this);
         this.updateLabel = this.updateLabel.bind(this);
+        this.addCredentialPubKey = this.addCredentialPubKey.bind(this);
+        this.removeCredentialPubKey = this.removeCredentialPubKey.bind(this);
     }
 
     execute = async (
@@ -329,6 +362,45 @@ export class ProxyClient extends ProxyQueryClient implements ProxyInterface {
                 update_label: {
                     new_label: newLabel,
                 },
+            },
+            fee,
+            memo,
+            funds
+        );
+    };
+    addCredentialPubKey = async (
+        {
+            credentialPubKey,
+        }: {
+            credentialPubKey: WCredentialPubKey;
+        },
+        fee: number | StdFee | "auto" = "auto",
+        memo?: string,
+        funds?: Coin[]
+    ): Promise<ExecuteResult> => {
+        return await this.client.execute(
+            this.sender,
+            this.contractAddress,
+            {
+                add_credential_pub_key: {
+                    credential_pub_key: credentialPubKey,
+                },
+            },
+            fee,
+            memo,
+            funds
+        );
+    };
+    removeCredentialPubKey = async (
+        fee: number | StdFee | "auto" = "auto",
+        memo?: string,
+        funds?: Coin[]
+    ): Promise<ExecuteResult> => {
+        return await this.client.execute(
+            this.sender,
+            this.contractAddress,
+            {
+                remove_credential_pub_key: {},
             },
             fee,
             memo,

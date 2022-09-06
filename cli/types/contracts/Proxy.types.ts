@@ -22,7 +22,20 @@ export type CosmosMsgForEmpty =
           distribution: DistributionMsg;
       }
     | {
+          stargate: {
+              type_url: string;
+              value: Binary;
+              [k: string]: unknown;
+          };
+      }
+    | {
+          ibc: IbcMsg;
+      }
+    | {
           wasm: WasmMsg;
+      }
+    | {
+          gov: GovMsg;
       };
 export type BankMsg =
     | {
@@ -75,6 +88,33 @@ export type DistributionMsg =
               [k: string]: unknown;
           };
       };
+export type Binary = string;
+export type IbcMsg =
+    | {
+          transfer: {
+              amount: Coin;
+              channel_id: string;
+              timeout: IbcTimeout;
+              to_address: string;
+              [k: string]: unknown;
+          };
+      }
+    | {
+          send_packet: {
+              channel_id: string;
+              data: Binary;
+              timeout: IbcTimeout;
+              [k: string]: unknown;
+          };
+      }
+    | {
+          close_channel: {
+              channel_id: string;
+              [k: string]: unknown;
+          };
+      };
+export type Timestamp = Uint64;
+export type Uint64 = number;
 export type WasmMsg =
     | {
           execute: {
@@ -115,13 +155,30 @@ export type WasmMsg =
               [k: string]: unknown;
           };
       };
-export type Binary = string;
+export type GovMsg = {
+    vote: {
+        proposal_id: number;
+        vote: VoteOption;
+        [k: string]: unknown;
+    };
+};
+export type VoteOption = "yes" | "no" | "abstain" | "no_with_veto";
 export interface Coin {
     amount: Uint128;
     denom: string;
     [k: string]: unknown;
 }
 export interface Empty {
+    [k: string]: unknown;
+}
+export interface IbcTimeout {
+    block?: IbcTimeoutBlock | null;
+    timestamp?: Timestamp | null;
+    [k: string]: unknown;
+}
+export interface IbcTimeoutBlock {
+    height: number;
+    revision: number;
     [k: string]: unknown;
 }
 export type ExecuteMsgForEmpty =
@@ -172,8 +229,23 @@ export type ExecuteMsgForEmpty =
               new_label: string;
               [k: string]: unknown;
           };
+      }
+    | {
+          add_credential_pub_key: {
+              credential_pub_key: WCredentialPubKey;
+              [k: string]: unknown;
+          };
+      }
+    | {
+          remove_credential_pub_key: {
+              [k: string]: unknown;
+          };
       };
 export type Addr = string;
+export type BigNumberBytes = string;
+export type WMap = [number[], BigNumberBytes][];
+export type PointG1Bytes = string;
+export type PointG2Bytes = string;
 export interface RelayTransaction {
     message: Binary;
     nonce: number;
@@ -189,6 +261,33 @@ export interface Guardians {
 export interface MultiSig {
     multisig_initial_funds: Coin[];
     threshold_absolute_count: number;
+    [k: string]: unknown;
+}
+export interface WCredentialPubKey {
+    p_key: WCredentialPrimaryPubKey;
+    r_key?: WCredentialRevocationPubKey | null;
+    [k: string]: unknown;
+}
+export interface WCredentialPrimaryPubKey {
+    n: BigNumberBytes;
+    r: WMap;
+    rctxt: BigNumberBytes;
+    s: BigNumberBytes;
+    z: BigNumberBytes;
+    [k: string]: unknown;
+}
+export interface WCredentialRevocationPubKey {
+    g: PointG1Bytes;
+    g_dash: PointG2Bytes;
+    h: PointG1Bytes;
+    h0: PointG1Bytes;
+    h1: PointG1Bytes;
+    h2: PointG1Bytes;
+    h_cap: PointG2Bytes;
+    htilde: PointG1Bytes;
+    pk: PointG1Bytes;
+    u: PointG2Bytes;
+    y: PointG2Bytes;
     [k: string]: unknown;
 }
 export interface InfoResponse {
@@ -235,5 +334,9 @@ export type QueryMsg =
               sender: string;
               [k: string]: unknown;
           };
+      }
+    | {
+          credential_info: {
+              [k: string]: unknown;
+          };
       };
-export type Uint64 = number;

@@ -202,9 +202,9 @@ export interface FactoryInterface extends FactoryReadOnlyInterface {
     ) => Promise<ExecuteResult>;
 }
 export class FactoryClient extends FactoryQueryClient implements FactoryInterface {
-    override client: SigningCosmWasmClient;
+    client: SigningCosmWasmClient;
     sender: string;
-    override contractAddress: string;
+    contractAddress: string;
 
     constructor(client: SigningCosmWasmClient, sender: string, contractAddress: string) {
         super(client, contractAddress);
