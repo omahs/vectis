@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::ContractError;
 use cosmwasm_std::CanonicalAddr;
 use cw_storage_plus::{Item, Map};
-use vectis_verifier::types::CredentialPublicKey;
+use vectis_verifier::types::WCredentialPubKey;
 use vectis_wallet::{Nonce, RelayTxError};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -62,4 +62,4 @@ pub const MULTISIG_ADDRESS: Item<Option<CanonicalAddr>> = Item::new("fixed_multi
 pub const ADDR_PREFIX: Item<String> = Item::new("addr_prefix");
 /// Credential Pub Key for verifier contract to call
 /// This is intended for self issuered credentials
-pub const CRED_PUB_KEY: Item<CredentialPublicKey> = Item::new("credential_pub_key");
+pub const CRED_PUB_KEY: Item<WCredentialPubKey> = Item::new("credential_pub_key");

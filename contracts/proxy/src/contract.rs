@@ -9,7 +9,7 @@ use cw2::set_contract_version;
 use schemars::JsonSchema;
 use std::convert::TryInto;
 use std::fmt;
-use vectis_verifier::types::{CredentialPublicKey, WCredentialPubKey};
+use vectis_verifier::types::WCredentialPubKey;
 use vectis_wallet::{
     pub_key_to_address, query_verify_cosmos, CodeIdType, Guardians, RelayTransaction, RelayTxError,
     WalletFactoryExecuteMsg, WalletFactoryQueryMsg, WalletInfo,
@@ -453,7 +453,7 @@ pub fn execute_add_cred_pub_key(
         is_contract?;
     }
 
-    CRED_PUB_KEY.save(deps.storage, &credential_pub_key.try_into()?)?;
+    CRED_PUB_KEY.save(deps.storage, &credential_pub_key)?;
 
     Ok(Response::default().add_attribute("action", "added credential public key"))
 }
@@ -539,7 +539,7 @@ pub fn query_can_execute_relay(deps: Deps, sender: String) -> StdResult<CanExecu
     })
 }
 
-pub fn query_cred_info(deps: Deps) -> StdResult<(CredentialPublicKey, CanonicalAddr)> {
+pub fn query_cred_info(deps: Deps) -> StdResult<(WCredentialPubKey, CanonicalAddr)> {
     Ok((
         CRED_PUB_KEY.load(deps.storage)?,
         USER.load(deps.storage)?.addr,
