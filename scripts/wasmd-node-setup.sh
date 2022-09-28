@@ -23,12 +23,19 @@ GUARDIAN1_ADDR="wasm1qwwx8hsrhge9ptg4skrmux35zgna47pw0es69z"
 GUARDIAN2_ADDR="wasm1wk2r0jrhuskqmhc0gk6dcpmnz094sc2ausut0d"
 RELAYER1_ADDR="wasm1ucl9dulgww2trng0dmunj348vxneufu5nk4yy4"
 RELAYER2_ADDR="wasm1yjammmgqu62lz4sxk5seu7ml4fzdu7gkatgswc"
+APP_TOML_CONFIG="$APP_HOME"/config/app.toml
+APP_TOML_CONFIG_NEW="$APP_HOME"/config/app_new.toml
+CONFIG_TOML_CONFIG="$APP_HOME"/config/config.toml
 
 # initialize wasmd configuration files
 wasmd init localnet --chain-id ${CHAIN_ID} --home ${APP_HOME} -o
 
 # add minimum gas prices config to app configuration file
 sed -i -r 's/minimum-gas-prices = ""/minimum-gas-prices = "0.01ucosm"/' ${APP_HOME}/config/app.toml
+sed -n '1h;1!H;${g;s/# Enable defines if the API server should be enabled.\nenable = false/enable = true/;p;}' "$APP_TOML_CONFIG" > "$APP_TOML_CONFIG_NEW"
+mv "$APP_TOML_CONFIG_NEW" "$APP_TOML_CONFIG"
+sed -i -r "s/enabled-unsafe-cors = false/enabled-unsafe-cors = true/" "$APP_TOML_CONFIG"
+sed -i -r "s/cors_allowed_origins = \[\]/cors_allowed_origins = \[\"\*\"\]/" "$CONFIG_TOML_CONFIG"
 
 # Add your wallet addresses to genesis to fund them
 # Please provide the corresponding address, user private key and mnemonic in .env.dev file at the root of the directory 
