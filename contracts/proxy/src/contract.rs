@@ -167,7 +167,10 @@ pub fn execute_inst_plugin(
     plugin_params: PluginParams,
 ) -> Result<Response, ContractError> {
     unimplemented!()
+<<<<<<< HEAD
     // check if plugin is already bought although it will be free.
+=======
+>>>>>>> 1101ed5 (wip: plugin)
     // instantiates code with code_id and msg
     // admin of the code is proxy itself
     // writes address to PLUGINS
