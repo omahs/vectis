@@ -19,7 +19,7 @@ use crate::helpers::{
     ensure_is_contract_self, ensure_is_relayer, ensure_is_relayer_or_user, ensure_is_user,
     is_frozen, is_relayer, load_addresses, load_canonical_addresses,
 };
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, PluginParams, QueryMsg};
 use crate::state::{
     User, ADDR_PREFIX, CODE_ID, FACTORY, FROZEN, GUARDIANS, LABEL, MULTISIG_ADDRESS,
     MULTISIG_CODE_ID, PENDING_GUARDIAN_ROTATION, RELAYERS, USER,
@@ -133,7 +133,66 @@ pub fn execute(
         }
         ExecuteMsg::UpdateGuardians {} => execute_update_guardians(deps, env, info),
         ExecuteMsg::UpdateLabel { new_label } => execute_update_label(deps, info, env, new_label),
+        ExecuteMsg::InstantiatePlugin {
+            code_id,
+            instantiate_msg,
+            plugin_params,
+        } => execute_inst_plugin(deps, env, code_id, instantiate_msg, plugin_params),
+        ExecuteMsg::UpdatePlugins {
+            plugin_addr,
+            plugin_params,
+            new_code_id,
+            migrate_msg,
+        } => execute_update_plugin(
+            deps,
+            env,
+            plugin_addr,
+            plugin_params,
+            new_code_id,
+            migrate_msg,
+        ),
+        ExecuteMsg::PluginExecute { msgs } => execute_plugin_msgs(deps, info, msgs),
     }
+}
+
+/// Executes instantiation of plugin
+pub fn execute_inst_plugin(
+    deps: DepsMut,
+    env: Env,
+    code_id: u64,
+    instantiate_msg: Binary,
+    plugin_params: PluginParams,
+) -> Result<Response, ContractError> {
+    unimplemented!()
+    // instantiates code with code_id and msg
+    // admin of the code is proxy itself
+    // writes address to PLUGINS
+}
+
+/// Update plugin params, migrate or remove plugin
+pub fn execute_update_plugin(
+    deps: DepsMut,
+    env: Env,
+    plugin_addr: String,
+    plugin_params: Option<PluginParams>,
+    new_code_id: Option<u64>,
+    migrate_msg: Option<Binary>,
+) -> Result<Response, ContractError> {
+    unimplemented!()
+}
+
+/// Call by plugins
+pub fn execute_plugin_msgs(
+    deps: DepsMut,
+    info: MessageInfo,
+    msgs: Vec<CosmosMsg>,
+) -> Result<Response, ContractError> {
+    unimplemented!()
+    // Checks if caller is "trusted",
+    // i.e. on the PLUGINS list
+    //
+    // Checks with PluginParams, like codehash?
+    // Execute messages
 }
 
 /// Executes message from the user
