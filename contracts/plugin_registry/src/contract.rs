@@ -30,21 +30,9 @@ pub fn execute(
             name,
             version,
             ipfs_hash,
-            chain_id,
             code_id,
             checksum,
-            permissions,
-        } => execute_register_plugin(
-            deps,
-            info,
-            name,
-            version,
-            ipfs_hash,
-            chain_id,
-            code_id,
-            checksum,
-            permissions,
-        ),
+        } => execute_register_plugin(deps, info, name, version, ipfs_hash, code_id, checksum),
         ExecuteMsg::UnregisterPlugin { id } => execute_unregister_plugin(deps, info, id),
         ExecuteMsg::UpdatePlugin {
             id,
@@ -53,19 +41,7 @@ pub fn execute(
             ipfs_hash,
             code_id,
             checksum,
-            permissions,
-        } => execute_update_plugin(
-            deps,
-            info,
-            id,
-            name,
-            version,
-            ipfs_hash,
-            code_id,
-            checksum,
-            permissions,
-        ),
-        ExecuteMsg::BuyPlugin { id } => execute_buy_plugin(deps, info, id),
+        } => execute_update_plugin(deps, info, id, name, version, ipfs_hash, code_id, checksum),
         ExecuteMsg::UpdateConfig {
             reviewers,
             supported_denoms,
@@ -79,10 +55,8 @@ pub fn execute_register_plugin(
     _name: String,
     _version: String,
     _ipfs_hash: String,
-    _chain_id: String,
     _code_id: u64,
     _checksum: String,
-    _permissions: Vec<String>,
 ) -> Result<Response, ContractError> {
     unimplemented!()
     // check is executed by one of the reviewers
@@ -108,22 +82,10 @@ pub fn execute_update_plugin(
     _ipfs_hash: Option<String>,
     _code_id: Option<u64>,
     _checksum: Option<String>,
-    _permissions: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
     // check is executed by one of the reviewers
     // enforce a new version using semver.
     // update plugin information in PLUGINS Map<u64(id), Plugin>
-    unimplemented!()
-}
-
-pub fn execute_buy_plugin(
-    _deps: DepsMut,
-    _info: MessageInfo,
-    _id: u64,
-) -> Result<Response, ContractError> {
-    // check that plugin exists
-    // check that user sent enough funds to buy the plugin
-    // include buyer into PURCHASES_HISTORY
     unimplemented!()
 }
 
@@ -145,11 +107,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetPlugins { limit, start_after } => {
             to_binary(&query_plugins(deps, limit, start_after)?)
         }
-        QueryMsg::GetPluginsByAddr {
-            addr,
-            limit,
-            start_after,
-        } => to_binary(&query_plugins_by_addr(deps, addr, limit, start_after)?),
         QueryMsg::GetPluginById { id } => to_binary(&query_plugin_by_id(deps, id)?),
     }
 }
@@ -166,16 +123,6 @@ pub fn query_plugins(
 ) -> StdResult<Vec<Plugin>> {
     unimplemented!()
     // Return all plugins
-}
-
-pub fn query_plugins_by_addr(
-    _deps: Deps,
-    _addr: String,
-    _limit: Option<u32>,
-    _start_after: Option<u32>,
-) -> StdResult<Vec<Plugin>> {
-    unimplemented!()
-    // Return all plugins owned by addr
 }
 
 pub fn query_plugin_by_id(_deps: Deps, _id: u64) -> StdResult<Plugin> {
