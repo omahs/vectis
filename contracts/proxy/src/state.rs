@@ -60,3 +60,6 @@ pub const LABEL: Item<String> = Item::new("label");
 pub const MULTISIG_ADDRESS: Item<Option<CanonicalAddr>> = Item::new("fixed_multisig_address");
 /// Plugins
 pub const PLUGINS: Map<CanonicalAddr, PluginParams> = Map::new("plugins");
+
+#[cw_serde]
+pub struct PluginParams {}
