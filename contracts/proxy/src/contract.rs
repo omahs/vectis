@@ -23,7 +23,7 @@ use crate::helpers::{
 use crate::msg::{ExecuteMsg, InstantiateMsg, PluginParams, QueryMsg};
 use crate::state::{
     Controller, ADDR_PREFIX, CODE_ID, CONTROLLER, FACTORY, FROZEN, GUARDIANS, LABEL,
-    MULTISIG_ADDRESS, MULTISIG_CODE_ID, PENDING_GUARDIAN_ROTATION, RELAYERS,
+    MULTISIG_ADDRESS, MULTISIG_CODE_ID, PENDING_GUARDIAN_ROTATION, PLUGINS, RELAYERS,
 };
 use cw3_fixed_multisig::msg::InstantiateMsg as FixedMultisigInstantiateMsg;
 use cw_utils::{parse_reply_instantiate_data, Duration, Threshold};
@@ -41,6 +41,7 @@ const MAX_MULTISIG_VOTING_PERIOD: Duration = Duration::Time(2 << 27);
 // set resasonobly high value to not interfere with multisigs
 /// Used to spot an multisig instantiate reply
 const MULTISIG_INSTANTIATE_ID: u64 = u64::MAX;
+const PLUGIN_INSTANTIATE_ID: u64 = u64::MAX - 1u64;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -140,7 +141,16 @@ pub fn execute(
             code_id,
             instantiate_msg,
             plugin_params,
-        } => execute_inst_plugin(deps, env, code_id, instantiate_msg, plugin_params),
+            label,
+        } => execute_inst_plugin(
+            deps,
+            env,
+            info,
+            code_id,
+            instantiate_msg,
+            plugin_params,
+            label,
+        ),
         ExecuteMsg::UpdatePlugins {
             plugin_addr,
             plugin_params,
@@ -162,18 +172,27 @@ pub fn execute(
 pub fn execute_inst_plugin(
     deps: DepsMut,
     env: Env,
+    info: MessageInfo,
     code_id: u64,
-    instantiate_msg: Binary,
+    msg: Binary,
     plugin_params: PluginParams,
+    label: String,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
-<<<<<<< HEAD
-    // check if plugin is already bought although it will be free.
-=======
->>>>>>> 1101ed5 (wip: plugin)
-    // instantiates code with code_id and msg
-    // admin of the code is proxy itself
-    // writes address to PLUGINS
+    ensure_is_controller(deps.as_ref(), info.sender.as_str())?;
+    if plugin_params.has_full_access() {
+        let instantiate_msg = WasmMsg::Instantiate {
+            admin: Some(env.contract.address.to_string()),
+            code_id,
+            msg,
+            funds: info.funds,
+            label: label.into(),
+        };
+        let msg = SubMsg::reply_always(instantiate_msg, PLUGIN_INSTANTIATE_ID);
+        Ok(Response::new().add_submessage(msg))
+    } else {
+        // Instantiate through grantor contract to get partial access
+        Err(ContractError::FeatureNotSupported)
+    }
 }
 
 /// Update plugin params, migrate or remove plugin
@@ -525,10 +544,25 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
                 deps.storage,
                 &Some(deps.api.addr_canonicalize(&res.contract_address)?),
             )?;
-
             Ok(Response::new()
                 .add_attribute("action", "Fixed Multisig Stored")
                 .add_attribute("multisig_address", res.contract_address))
+        } else {
+            Err(ContractError::MultisigInstantiationError {})
+        }
+    } else if reply.id == PLUGIN_INSTANTIATE_ID {
+        if let Ok(res) = parse_reply_instantiate_data(reply) {
+            PLUGINS.save(
+                deps.storage,
+                deps.api
+                    .addr_canonicalize(&res.contract_address)?
+                    .as_slice(),
+                &None,
+            )?;
+
+            Ok(Response::new()
+                .add_attribute("action", "Plugin Stored")
+                .add_attribute("plugin_address", res.contract_address))
         } else {
             Err(ContractError::MultisigInstantiationError {})
         }

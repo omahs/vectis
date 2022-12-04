@@ -47,4 +47,6 @@ pub enum ContractError {
     GuardianRequestNotFound {},
     #[error("Guardian update request cannot be executed yet")]
     GuardianRequestNotExecutable {},
+    #[error("Feature is not yet supported")]
+    FeatureNotSupported,
 }

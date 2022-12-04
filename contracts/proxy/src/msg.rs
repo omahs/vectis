@@ -42,6 +42,7 @@ where
         code_id: u64,
         instantiate_msg: Binary,
         plugin_params: PluginParams,
+        label: String,
     },
     /// Update plugins, if params is `None`, plugin is removed
     /// If code_id is Some, plugin is migrated
@@ -59,5 +60,13 @@ where
 
 #[cw_serde]
 pub struct PluginParams {
-    // codehash?
+    // Do we want to instantitate with permission for the grantor?
+    // if so, this instantiate message goes directly to a grantor plugin
+    pub grantor: bool,
+}
+
+impl PluginParams {
+    pub fn has_full_access(&self) -> bool {
+        !self.grantor
+    }
 }
