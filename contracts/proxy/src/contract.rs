@@ -2,15 +2,17 @@ use cosmwasm_schema::schemars;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QueryRequest, Reply,
-    Response, StdResult, SubMsg, WasmMsg,
+    to_binary, Addr, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    Reply, Response, StdResult, SubMsg, WasmMsg,
 };
 use cw1::CanExecuteResponse;
 use cw2::set_contract_version;
+use cw_storage_plus::Bound;
 use std::fmt;
 use vectis_wallet::{
     pub_key_to_address, query_verify_cosmos, CodeIdType, GuardiansUpdateMsg,
-    GuardiansUpdateRequest, RelayTransaction, RelayTxError, WalletFactoryQueryMsg, WalletInfo,
+    GuardiansUpdateRequest, PluginListResponse, RelayTransaction, RelayTxError,
+    WalletFactoryQueryMsg, WalletInfo, DEFAULT_LIMIT, MAX_LIMIT,
 };
 
 use crate::error::ContractError;
@@ -153,17 +155,8 @@ pub fn execute(
         ),
         ExecuteMsg::UpdatePlugins {
             plugin_addr,
-            plugin_params,
-            new_code_id,
             migrate_msg,
-        } => execute_update_plugin(
-            deps,
-            env,
-            plugin_addr,
-            plugin_params,
-            new_code_id,
-            migrate_msg,
-        ),
+        } => execute_update_plugin(deps, info, plugin_addr, migrate_msg),
         ExecuteMsg::PluginExecute { msgs } => execute_plugin_msgs(deps, info, msgs),
     }
 }
@@ -195,16 +188,41 @@ pub fn execute_inst_plugin(
     }
 }
 
-/// Update plugin params, migrate or remove plugin
+/// Add without instantiate, migrate or remove plugin
 pub fn execute_update_plugin(
     deps: DepsMut,
-    env: Env,
+    info: MessageInfo,
     plugin_addr: String,
-    plugin_params: Option<PluginParams>,
-    new_code_id: Option<u64>,
-    migrate_msg: Option<Binary>,
+    migrate_msg: Option<(u64, Binary)>,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
+    ensure_is_controller(deps.as_ref(), info.sender.as_str())?;
+    let addr = deps
+        .api
+        .addr_canonicalize(&deps.api.addr_validate(&plugin_addr)?.as_str())?;
+    let res = Response::new().add_attribute("Plugin Addr", &plugin_addr);
+    match PLUGINS.may_load(deps.storage, addr.as_slice())? {
+        Some(_) => match migrate_msg {
+            Some((new_code_id, msg)) => {
+                let wasm_msg = WasmMsg::Migrate {
+                    contract_addr: plugin_addr,
+                    new_code_id,
+                    msg,
+                };
+
+                Ok(res
+                    .add_message(wasm_msg)
+                    .add_attribute("vectis.proxy.v1/MsgUpdatePlugin", "Migrate"))
+            }
+            None => {
+                PLUGINS.remove(deps.storage, addr.as_slice());
+                Ok(res.add_attribute("vectis.proxy.v1/MsgUpdatePlugin", "Remove"))
+            }
+        },
+        None => {
+            PLUGINS.save(deps.storage, addr.as_slice(), &())?;
+            Ok(res.add_attribute("vectis.proxy.v1/MsgUpdatePlugin", "Add Existing"))
+        }
+    }
 }
 
 /// Call by plugins
@@ -213,12 +231,11 @@ pub fn execute_plugin_msgs(
     info: MessageInfo,
     msgs: Vec<CosmosMsg>,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
-    // Checks if caller is "trusted",
-    // i.e. on the PLUGINS list
-    //
-    // Checks with PluginParams, like codehash?
-    // Execute messages
+    let plugin = deps.api.addr_canonicalize(&info.sender.as_str())?;
+    PLUGINS.load(deps.storage, plugin.as_slice())?;
+    Ok(Response::new()
+        .add_messages(msgs)
+        .add_attribute("vectis.proxy.v1/PluginExecMsg", info.sender))
 }
 
 pub fn execute_execute<T>(
@@ -557,14 +574,14 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
                 deps.api
                     .addr_canonicalize(&res.contract_address)?
                     .as_slice(),
-                &None,
+                &(),
             )?;
 
             Ok(Response::new()
                 .add_attribute("action", "Plugin Stored")
                 .add_attribute("plugin_address", res.contract_address))
         } else {
-            Err(ContractError::MultisigInstantiationError {})
+            Err(ContractError::PluginInstantiationError {})
         }
     } else {
         Err(ContractError::InvalidMessage {
@@ -579,6 +596,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Info {} => to_binary(&query_info(deps)?),
         QueryMsg::CanExecuteRelay { sender } => to_binary(&query_can_execute_relay(deps, sender)?),
         QueryMsg::GuardiansUpdateRequest {} => to_binary(&query_guardian_update_request(deps)?),
+        QueryMsg::Plugins { start_after, limit } => {
+            to_binary(&query_plugins(deps, start_after, limit)?)
+        }
     }
 }
 
@@ -619,6 +639,36 @@ pub fn query_can_execute_relay(deps: Deps, sender: String) -> StdResult<CanExecu
 
 pub fn query_guardian_update_request(deps: Deps) -> StdResult<Option<GuardiansUpdateRequest>> {
     PENDING_GUARDIAN_ROTATION.may_load(deps.storage)
+}
+
+pub fn query_plugins(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<PluginListResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let items = match start_after {
+        Some(s) => {
+            let wallet_addr = deps.api.addr_canonicalize(&s)?.to_vec();
+            let start = Some(Bound::exclusive(wallet_addr.as_slice()));
+            PLUGINS
+                .prefix(())
+                .range(deps.storage, start, None, Order::Ascending)
+        }
+        None => PLUGINS
+            .prefix(())
+            .range(deps.storage, None, None, Order::Ascending),
+    };
+
+    let plugins: StdResult<Vec<Addr>> = items
+        .take(limit)
+        .map(|w| -> StdResult<Addr> {
+            let ww = w?;
+            Ok(deps.api.addr_humanize(&CanonicalAddr::from(ww.0))?)
+        })
+        .collect();
+
+    Ok(PluginListResponse { plugins: plugins? })
 }
 
 #[cfg(feature = "migration")]

@@ -49,9 +49,7 @@ where
     /// Priviledge: User
     UpdatePlugins {
         plugin_addr: String,
-        plugin_params: Option<PluginParams>,
-        new_code_id: Option<u64>,
-        migrate_msg: Option<Binary>,
+        migrate_msg: Option<(u64, Binary)>,
     },
     /// Similar to Execute but called by plugins,
     /// this has some checks and limitations

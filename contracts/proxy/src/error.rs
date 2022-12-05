@@ -41,6 +41,8 @@ pub enum ContractError {
     InvalidReplyId {},
     #[error("Multisig cannot be instantiated")]
     MultisigInstantiationError {},
+    #[error("Plugin cannot be instantiated")]
+    PluginInstantiationError {},
     #[error("Same Label")]
     SameLabel {},
     #[error("No guardian request found")]
