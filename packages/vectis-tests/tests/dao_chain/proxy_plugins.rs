@@ -103,6 +103,7 @@ fn cronkitty_plugin_works() {
                 code_id: cronkitty_code_id,
                 instantiate_msg: to_binary(&CronKittyInstMsg {
                     croncat_addr: croncat.to_string(),
+                    denom: "ucosm".into(),
                 })
                 .unwrap(),
                 plugin_params: PluginParams { grantor: false },
@@ -132,19 +133,22 @@ fn cronkitty_plugin_works() {
         cw20_coins: vec![],
     };
 
-    suite
+    let res = suite
         .app
         .execute_contract(
             suite.controller,
             wallet_address.clone(),
             &proxy_exec(
                 &cronkitty,
-                &CronKittyExecMsg::AddTask { tq },
-                vec![coin(100_000, "ucosm")],
+                &CronKittyExecMsg::CreateTask { tq },
+                vec![coin(150_000, "ucosm")],
             ),
-            &[coin(100_000, "ucosm")],
+            // to top up the proxy wallet
+            &[coin(200_000, "ucosm")],
         )
         .unwrap();
+
+    println!(" EVENTS: {:?}", res);
 
     // Check task is added on Croncat
     let tasks: Vec<TaskResponse> = suite
@@ -159,6 +163,9 @@ fn cronkitty_plugin_works() {
             .unwrap(),
         }))
         .unwrap();
+
+    // remove with
+    // tasks[0].taskhash
 
     assert_eq!(tasks.len(), 1);
     assert_eq!(tasks[0].owner_id, cronkitty);
