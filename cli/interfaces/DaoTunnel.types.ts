@@ -85,7 +85,8 @@ export type DaoTunnelPacketMsg =
               msgs: CosmosMsgForEmpty[];
           };
       };
-export type CanonicalAddr = string;
+export type CanonicalAddr = Binary;
+export type Binary = string;
 export type Uint128 = string;
 export type CosmosMsgForEmpty =
     | {
@@ -166,7 +167,6 @@ export type DistributionMsg =
               [k: string]: unknown;
           };
       };
-export type Binary = string;
 export type IbcMsg =
     | {
           transfer: {
