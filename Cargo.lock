@@ -252,9 +252,9 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-croncat-core 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-croncat-core",
  "cw-multi-test 0.16.1",
- "cw-rules-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-rules-core 0.1.1",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -263,6 +263,7 @@ dependencies = [
  "sylvia",
  "sylvia-derive",
  "thiserror",
+ "vectis-wallet",
 ]
 
 [[package]]
@@ -384,7 +385,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cron_schedule",
- "cw-croncat-core 0.1.3",
+ "cw-croncat-core",
  "cw-rules-core 0.1.1",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.13.4",
@@ -412,26 +413,6 @@ dependencies = [
  "schemars",
  "serde",
  "sha2 0.10.6",
- "thiserror",
-]
-
-[[package]]
-name = "cw-croncat-core"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9d95fe2c6d9520b6cc9dc869cd375b87db8eb5d5b96f92343a054d2b57bc524"
-dependencies = [
- "cosmwasm-std",
- "cosmwasm-storage",
- "cron_schedule",
- "cw-rules-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw-storage-plus 0.13.4",
- "cw2 0.13.4",
- "cw20",
- "hex",
- "schemars",
- "serde",
- "sha2 0.9.9",
  "thiserror",
 ]
 
@@ -515,7 +496,7 @@ dependencies = [
  "base64",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-croncat-core 0.1.3",
+ "cw-croncat-core",
  "cw-rules-core 0.1.1",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.13.4",
@@ -1777,7 +1758,7 @@ dependencies = [
  "cronkitty",
  "cw-core",
  "cw-croncat",
- "cw-croncat-core 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-croncat-core",
  "cw-multi-test 0.16.1",
  "cw-proposal-single",
  "cw-rules",
