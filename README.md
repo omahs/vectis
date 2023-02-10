@@ -8,14 +8,14 @@
 
 ## Overview
 
-Smart Contract Wallet allows user to interact with DAPPs on the blockchain with the same amount of autonomy of a classic non-custodial solution,
+Smart Contract Wallet allows user to interact with DAPPs on the blockchain with the same amount of autonomy as a classic non-custodial solution,
 with the additional functionalities designed to provide the user with better experience and security.
 
-SCW also provide functions that allow businesses to satisfy regulatory requirements regarding support of users,
+SCW also provides functions that allow businesses to satisfy regulatory requirements regarding support of users,
 transparency,
 separation of control duties and verifiability.
 
-VectisDAO is the organisation that provides governance to the this infrastructure.
+VectisDAO is the organisation that provides governance to this infrastructure.
 VectisDAO lives on [Juno Network] and leverages the [DAO DAO] stack.
 Every SCW wallet has the right to purchase a set amount of Govec tokens at a set price,
 the Govec will be minted and can be staked to vote.
@@ -83,7 +83,7 @@ The deployment of the DAO on the host chain has the following steps:
    1. Remote: Remote-Factory, Proxy, Remote-tunnel
 1. _DAO Chain_: Instantiate Govec contract (with admin having initial balance for proposing for DAO to deploy Factory)
 1. _DAO Chain_: Instantiate dao-core contract (which will instantiate one proposal module and one vote module contracts)
-   - note: vote contracts also instantiates a new staking contract as we use staked-balance for voting
+   - note: vote contracts also instantiate a new staking contract as we use staked-balance for voting
 1. _DAO Chain_: Admin propose and execute on DAO to deploy factory and Dao-tunnel contracts
 1. _Remote Chain_: Remote Admin instantiate Remote-tunnel with Dao-tunnel as port and connection Id from step 1
 1. _DAO Chain_: Admin propose and execute on DAO to allow ibc-connection to the Remote-tunnel
